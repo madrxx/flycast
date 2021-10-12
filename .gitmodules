@@ -4,3 +4,6 @@
 [submodule "core/deps/libchdr"]
 	path = core/deps/libchdr
 	url = https://github.com/rtissera/libchdr.git
+[submodule "core/deps/sh4asm"]
+	path = core/deps/sh4asm
+	url = git@github.com:washingtondc-emu/sh4asm.git

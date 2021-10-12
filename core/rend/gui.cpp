@@ -23,6 +23,8 @@
 #include "cfg/cfg.h"
 #include "hw/maple/maple_if.h"
 #include "hw/maple/maple_devs.h"
+#include "hw/sh4/sh4_if.h"
+#include "hw/sh4/sh4_mem.h"
 #include "hw/naomi/naomi_cart.h"
 #include "imgui/imgui.h"
 #include "gles/imgui_impl_opengl3.h"
@@ -40,6 +42,8 @@
 #include "log/LogManager.h"
 #include "emulator.h"
 #include "rend/mainui.h"
+#include "deps/sh4asm/sh4asm_core/disas.h"
+#include "debug/gdb_server.h"
 
 static bool game_started;
 
@@ -256,6 +260,8 @@ void gui_init()
 
     // TODO Linux, iOS, ...
 #endif
+	io.Fonts->AddFontDefault();
+
     INFO_LOG(RENDERER, "Screen DPI is %d, size %d x %d. Scaling by %.2f", screen_dpi, screen_width, screen_height, scaling);
 
     EventManager::listen(Event::Resume, emuEventCallback);
@@ -536,6 +542,13 @@ static void gui_display_commands()
 			50 * scaling)))
 	{
 		gui_stop_game();
+	}
+
+	if (ImGui::Button("Debugger", ImVec2(300 * scaling + ImGui::GetStyle().ColumnsMinSpacing + ImGui::GetStyle().FramePadding.x * 2 - 1,
+			50 * scaling)))
+	{
+		gui_state = GuiState::Debugger;
+		debugger::insertMatchpoint(0, 0x8C010080, 2);
 	}
 
 	ImGui::End();
@@ -2129,6 +2142,78 @@ static void gui_display_loadscreen()
     ImGui::End();
 }
 
+static std::string dasmline = "";
+
+void do_emit_asm(char txt)
+{
+	dasmline.push_back(txt);
+	// ImGui::Text(&txt);
+}
+
+void gui_debugger()
+{
+	ImGui::SetNextWindowSize(ImVec2(330 * scaling, 0));
+
+	ImGui::Begin("Debugger", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+
+	if (ImGui::Button("Suspend"))
+	{
+		config::DynarecEnabled = false;
+		dc_stop();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Step"))
+	{
+		dc_step();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Resume"))
+	{
+		dc_resume();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Close"))
+	{
+		gui_state = GuiState::Closed;
+		dc_resume();
+	}
+
+	// if (Sh4cntx.pc == 0x8C010000 || Sh4cntx.spc == 0x8C010000)
+	// {
+	// 	NOTICE_LOG(COMMON, "1ST_READ.bin entry");
+	// 	dc_stop();
+	// }
+
+	ImGuiIO& io = ImGui::GetIO();
+	ImFontAtlas* atlas = io.Fonts;
+	ImFont* font = atlas->Fonts[1];
+	ImGui::PushFont(font);
+
+	ImGui::Text("PC: %08X", Sh4cntx.pc);
+
+	for (size_t i = 0; i < 20; i++)
+	{
+		u16 instr = ReadMem16_nommu(Sh4cntx.pc + i * 2);
+
+		char buf [11];
+		sprintf(buf, "%08X: ", Sh4cntx.pc + i * 2);
+		dasmline.append(buf);
+
+		sh4asm_disas_inst(instr, do_emit_asm, Sh4cntx.pc);
+		dasmline.push_back('\n');
+	}
+
+	ImGui::Text(dasmline.c_str());
+	dasmline.clear();
+
+	ImGui::PopFont();
+
+	ImGui::End();
+}
+
 void gui_display_ui()
 {
 	if (gui_state == GuiState::Closed || gui_state == GuiState::VJoyEdit)
@@ -2185,6 +2270,8 @@ void gui_display_ui()
 	case GuiState::Cheats:
 		gui_cheats();
 		break;
+	case GuiState::Debugger:
+		break;
 	default:
 		die("Unknown UI state");
 		break;
@@ -2224,6 +2311,20 @@ void gui_display_osd()
 {
 	if (gui_state == GuiState::VJoyEdit)
 		return;
+
+	if (gui_state == GuiState::Debugger)
+	{
+		ImGui_Impl_NewFrame();
+		ImGui::NewFrame();
+
+		gui_debugger();
+
+		ImGui::Render();
+		ImGui_impl_RenderDrawData(ImGui::GetDrawData());
+
+		return;
+	}
+
 	std::string message = get_notification();
 	if (message.empty())
 		message = getFPSNotification();
