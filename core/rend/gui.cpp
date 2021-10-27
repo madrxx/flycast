@@ -44,6 +44,10 @@
 #include "lua/lua.h"
 #include "gui_chat.h"
 #include "imgui_driver.h"
+#include "debug/debug_agent.h"
+#include "hw/sh4/sh4_if.h"
+#include "hw/sh4/sh4_mem.h"
+#include "hw/sh4/disasm/disasm.h"
 
 static bool game_started;
 
@@ -254,6 +258,8 @@ void gui_initFonts()
 
     // TODO Linux, iOS, ...
 #endif
+	io.Fonts->AddFontDefault();
+
 	NOTICE_LOG(RENDERER, "Screen DPI is %.0f, size %d x %d. Scaling by %.2f", settings.display.dpi, settings.display.width, settings.display.height, settings.display.uiScale);
 }
 
@@ -587,6 +593,13 @@ static void gui_display_commands()
 			+ ImVec2(ImGui::GetStyle().ColumnsMinSpacing + ImGui::GetStyle().FramePadding.x * 2 - 1, 0)))
 	{
 		gui_stop_game();
+	}
+
+	if (ImGui::Button("Debugger", ImVec2(300 * scaling + ImGui::GetStyle().ColumnsMinSpacing + ImGui::GetStyle().FramePadding.x * 2 - 1,
+			50 * scaling)))
+	{
+		gui_state = GuiState::Debugger;
+		// debugger::insertMatchpoint(0, 0x8C010080, 2);
 	}
 
 	ImGui::End();
@@ -2608,6 +2621,8 @@ void gui_display_ui()
 	case GuiState::Cheats:
 		gui_cheats();
 		break;
+	case GuiState::Debugger:
+		break;
 	default:
 		die("Unknown UI state");
 		break;
@@ -2647,6 +2662,20 @@ void gui_display_osd()
 {
 	if (gui_state == GuiState::VJoyEdit)
 		return;
+
+	if (gui_state == GuiState::Debugger)
+	{
+		ImGui_Impl_NewFrame();
+		ImGui::NewFrame();
+
+		gui_debugger();
+
+		ImGui::Render();
+		ImGui_impl_RenderDrawData(ImGui::GetDrawData());
+
+		return;
+	}	
+
 	std::string message = get_notification();
 	if (message.empty())
 		message = getFPSNotification();
@@ -2747,3 +2776,149 @@ bool __cdecl Concurrency::details::_Task_impl_base::_IsNonBlockingThread() {
 	return false;
 }
 #endif
+
+void gui_debugger()
+{
+	u32 pc = *GetRegPtr(reg_nextpc);
+
+	ImGui::SetNextWindowSize(ImVec2(330 * scaling, 0));
+
+	ImGui::Begin("Disassembly", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+
+	if (ImGui::Button("Suspend"))
+	{
+		// config::DynarecEnabled = false;
+		debugAgent.interrupt();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Step"))
+	{
+		debugAgent.step();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Resume"))
+	{
+		emu.start();
+		// debugAgent.doContinue();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("BP"))
+	{
+		debugAgent.insertMatchpoint(0, pc + 0x10, 2);
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Close"))
+	{
+		gui_state = GuiState::Closed;
+		GamepadDevice::load_system_mappings();
+		emu.start();
+	}
+
+	// if (Sh4cntx.pc == 0x8C010000 || Sh4cntx.spc == 0x8C010000)
+	// {
+	// 	NOTICE_LOG(COMMON, "1ST_READ.bin entry");
+	// 	dc_stop();
+	// }
+
+	ImGuiIO& io = ImGui::GetIO();
+	ImFontAtlas* atlas = io.Fonts;
+	ImFont* defaultFont = atlas->Fonts[1];
+	ImGui::PushFont(defaultFont);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
+
+	for (size_t i = 0; i < 20; i++)
+	{
+		const u32 addr = pc + i * 2;
+
+		u16 instr = ReadMem16_nommu(addr);
+
+		auto it = debugAgent.breakpoints.find(addr);
+		const bool isBreakpoint = it != debugAgent.breakpoints.end();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0,2));
+		if (isBreakpoint) {
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+			ImGui::Text("B ");
+			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+				debugAgent.removeMatchpoint(0, addr, 2);
+			}
+
+			ImGui::PopStyleColor();
+
+			instr = it->second.savedOp;
+		} else {
+			ImGui::Text("  ");
+			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+				debugAgent.insertMatchpoint(0, addr, 2);
+			}
+		}
+		ImGui::SameLine();
+		ImGui::PopStyleVar();
+
+		char buf [64];
+		char* dasmbuf;
+		dasmbuf = decode(instr, pc);
+		sprintf(buf, "%08lX:", (u32) addr);
+		ImGui::Text(buf);
+		ImGui::SameLine();
+		ImGui::TextDisabled("%04X", instr);
+		ImGui::SameLine();
+		ImGui::Text(dasmbuf);
+	}
+
+	ImGui::PopFont();
+	ImGui::PopStyleVar();
+
+	ImGui::End();
+
+	ImGui::SetNextWindowSize(ImVec2(150 * scaling, 0));
+	ImGui::Begin("Breakpoints", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::PushFont(defaultFont);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
+
+	auto it = debugAgent.breakpoints.begin();
+
+	while (it != debugAgent.breakpoints.end())
+    {
+		ImGui::Text("0x%08x", it->first);
+
+		it++;
+    }
+
+	ImGui::PopStyleVar();
+	ImGui::PopFont();
+	ImGui::End();
+
+
+	ImGui::SetNextWindowSize(ImVec2(150 * scaling, 0));
+	ImGui::Begin("SH4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::PushFont(defaultFont);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
+	ImGui::Text("PC:  %08X", pc);
+	ImGui::Text("r0:  %08X", *GetRegPtr(reg_r0));
+	ImGui::Text("r1:  %08X", *GetRegPtr(reg_r1));
+	ImGui::Text("r2:  %08X", *GetRegPtr(reg_r2));
+	ImGui::Text("r3:  %08X", *GetRegPtr(reg_r3));
+	ImGui::Text("r4:  %08X", *GetRegPtr(reg_r4));
+	ImGui::Text("r5:  %08X", *GetRegPtr(reg_r5));
+	ImGui::Text("r6:  %08X", *GetRegPtr(reg_r6));
+	ImGui::Text("r7:  %08X", *GetRegPtr(reg_r7));
+	ImGui::Text("r8:  %08X", *GetRegPtr(reg_r8));
+	ImGui::Text("r9:  %08X", *GetRegPtr(reg_r9));
+	ImGui::Text("r10: %08X", *GetRegPtr(reg_r10));
+	ImGui::Text("r11: %08X", *GetRegPtr(reg_r11));
+	ImGui::Text("r12: %08X", *GetRegPtr(reg_r12));
+	ImGui::Text("r13: %08X", *GetRegPtr(reg_r13));
+	ImGui::Text("r14: %08X", *GetRegPtr(reg_r14));
+	ImGui::Text("r15: %08X", *GetRegPtr(reg_r15));
+
+	ImGui::PopStyleVar();
+	ImGui::PopFont();
+	ImGui::End();
+}
+

@@ -20,6 +20,7 @@ option(LIBRETRO "Build libretro core" OFF)
 option(USE_OPENGL "Use Open GL API" ON)
 option(USE_VIDEOCORE "RPI: use the legacy Broadcom GLES libraries" OFF)
 option(APPLE_BREAKPAD "macOS: Build breakpad client and dump symbols" OFF)
+option(GDB_SERVER "Build with GDB Server support" ON)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/shell/cmake")
 
@@ -174,6 +175,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         $<$<BOOL:MSVC>:_USE_MATH_DEFINES>
         $<$<BOOL:MSVC>:NOMINMAX>
         $<$<BOOL:${TEST_AUTOMATION}>:TEST_AUTOMATION>
+		$<$<BOOL:${GDB_SERVER}>:GDB_SERVER>
         $<$<BOOL:${ENABLE_LOG}>:DEBUGFAST>)
 if(IOS)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -816,7 +818,9 @@ target_sources(${PROJECT_NAME} PRIVATE
         core/hw/sh4/sh4_rom.cpp
         core/hw/sh4/sh4_rom.h
         core/hw/sh4/sh4_sched.cpp
-        core/hw/sh4/sh4_sched.h)
+        core/hw/sh4/sh4_sched.h
+		core/hw/sh4/disasm/disasm.cpp
+        core/hw/sh4/disasm/disasm.h)
 
 target_sources(${PROJECT_NAME} PRIVATE
         core/imgread/cdi.cpp
@@ -1021,7 +1025,8 @@ target_sources(${PROJECT_NAME} PRIVATE
         core/stdclass.cpp
         core/stdclass.h
         core/types.h
-        core/debug/gdb_server.h)
+		core/debug/debug_agent.cpp
+        core/debug/debug_agent.h)
 
 target_sources(${PROJECT_NAME} PRIVATE
         core/rend/CustomTexture.cpp
@@ -1284,6 +1289,10 @@ endif()
 if(NOT KNOWN_ARCHITECTURE_DETECTED)
     message(FATAL_ERROR "Unknown target processor: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
+
+target_sources(${PROJECT_NAME} PRIVATE
+		core/deps/dcdis/src/decode.c
+		core/deps/dcdis/src/decode.h)
 
 if(NOT LIBRETRO)
 	target_include_directories(${PROJECT_NAME} PRIVATE core/deps/ggpo/include core/deps/ggpo/lib/ggpo)

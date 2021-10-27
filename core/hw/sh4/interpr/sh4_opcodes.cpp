@@ -12,6 +12,8 @@
 #include "hw/sh4/sh4_interrupts.h"
 #include "hw/sh4/sh4_cache.h"
 #include "debug/gdb_server.h"
+#include "debug/debug_agent.h"
+#include "emulator.h"
 
 #define iNimp cpu_iNimp
 
@@ -806,12 +808,19 @@ sh4op(i0000_0000_0010_1000)
 	mac.full=0;
 }
 
+void logbranch(u32 src, u32 dest) {
+	// if (src < 0x8C010000 && dest >= 0x8c010000) {
+	// 	NOTICE_LOG(SH4, "Branch from %08X to %08X", src, dest);
+	// }
+}
+
 //braf <REG_N>
 sh4op(i0000_nnnn_0010_0011)
 {
 	u32 n = GetN(op);
 	u32 newpc = r[n] + next_pc + 2;//
 	ExecuteDelayslot();	//WARN : r[n] can change here
+	logbranch(next_pc, newpc);
 	next_pc = newpc;
 }
 //bsrf <REG_N>
@@ -824,6 +833,7 @@ sh4op(i0000_nnnn_0000_0011)
 	ExecuteDelayslot(); //WARN : pr and r[n] can change here
 	
 	pr = newpr;
+	logbranch(next_pc, newpc);
 	next_pc = newpc;
 	debugger::subroutineCall();
 }
@@ -840,6 +850,7 @@ sh4op(i0000_0000_0010_1011)
 	// instruction execution. The STC and STC.L SR instructions access all SR bits after modification.
 	sh4_sr_SetFull(ssr);
 	ExecuteDelayslot_RTE();
+	logbranch(next_pc, newpc);
 	next_pc = newpc;
 	if (UpdateSR())
 	{
@@ -868,6 +879,7 @@ sh4op(i1000_1011_iiii_iiii)
 	if (sr.T==0)
 	{
 		//direct jump
+		logbranch(next_pc, branch_target_s8(op));
 		next_pc = branch_target_s8(op);
 	}
 }
@@ -881,6 +893,7 @@ sh4op(i1000_1111_iiii_iiii)
 		//delay 1 instruction
 		u32 newpc=branch_target_s8(op);
 		ExecuteDelayslot();
+		logbranch(next_pc, branch_target_s8(op));
 		next_pc = newpc;
 	}
 }
@@ -892,6 +905,7 @@ sh4op(i1000_1001_iiii_iiii)
 	if (sr.T != 0)
 	{
 		//direct jump
+		logbranch(next_pc, branch_target_s8(op));
 		next_pc = branch_target_s8(op);
 	}
 }
@@ -904,6 +918,7 @@ sh4op(i1000_1101_iiii_iiii)
 	{
 		//delay 1 instruction
 		u32 newpc=branch_target_s8(op);
+		logbranch(next_pc, newpc);
 		ExecuteDelayslot();
 		next_pc = newpc;
 	}
@@ -930,6 +945,7 @@ sh4op(i1011_iiii_iiii_iiii)
 	ExecuteDelayslot();
 
 	pr = newpr;
+	logbranch(next_pc, newpc);
 	next_pc = newpc;
 	debugger::subroutineCall();
 }
@@ -938,7 +954,10 @@ sh4op(i1011_iiii_iiii_iiii)
 sh4op(i1100_0011_iiii_iiii)
 {
 	//printf("trapa 0x%X\n",(GetImm8(op) << 2));
-	debugger::debugTrap(0x160);
+	// debugger::debugTrap(0x160);
+	debugAgent.debugTrap(0x160);
+	emu.stop();
+	throw debugger::Stop();
 	CCN_TRA = (GetImm8(op) << 2);
 	Do_Exception(next_pc,0x160,0x100);
 }
@@ -963,6 +982,7 @@ sh4op(i0100_nnnn_0000_1011)
 	ExecuteDelayslot(); //r[n]/pr can change here
 
 	pr = newpr;
+	logbranch(next_pc, newpc);
 	next_pc = newpc;
 	debugger::subroutineCall();
 }

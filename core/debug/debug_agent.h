@@ -21,7 +21,7 @@
 #include "emulator.h"
 #include "hw/sh4/sh4_if.h"
 #include "hw/sh4/sh4_mem.h"
-#include "hw/sh4/sh4_interpreter.h"
+// #include "hw/sh4/sh4_interpreter.h"
 #include "cfg/option.h"
 #include <array>
 #include <signal.h>
@@ -298,17 +298,9 @@ public:
 		return (const u32 *)&stack[0];
 	}
 
-	void subroutineCall()
-	{
-		subroutineReturn();
-		stack.push_back(std::make_pair(Sh4cntx.pc, Sh4cntx.r[15]));
-	}
+	void subroutineCall();
 
-	void subroutineReturn()
-	{
-		while (!stack.empty() && Sh4cntx.r[15] >= stack.back().second)
-			stack.pop_back();
-	}
+	void subroutineReturn();
 
 	u32 exception = 0;
 
@@ -322,3 +314,5 @@ public:
 	std::map<u32, Breakpoint> breakpoints;
 	std::vector<std::pair<u32, u32>> stack;
 };
+
+extern DebugAgent debugAgent;

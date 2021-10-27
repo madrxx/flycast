@@ -666,6 +666,7 @@ void Emulator::step()
 	// FIXME single thread is better
 	singleStep = true;
 	start();
+	run();
 	stop();
 }
 

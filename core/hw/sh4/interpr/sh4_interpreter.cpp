@@ -13,6 +13,7 @@
 #include "hw/holly/sb.h"
 #include "../sh4_cache.h"
 #include "debug/gdb_server.h"
+#include "emulator.h"
 
 #define CPU_RATIO      (8)
 
@@ -46,6 +47,12 @@ static void Sh4_int_Run()
 			try {
 				do
 				{
+					if (next_pc == 0x8C0083ee) {
+						NOTICE_LOG(COMMON, "HI, we are at IP.BIN entry 0x%08X", next_pc);
+						emu.stop();
+						throw debugger::Stop();
+					}
+
 					u32 op = ReadNexOp();
 
 					ExecuteOpcode(op);
