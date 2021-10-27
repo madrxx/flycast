@@ -43,7 +43,7 @@
 #include "emulator.h"
 #include "rend/mainui.h"
 #include "deps/sh4asm/sh4asm_core/disas.h"
-#include "debug/gdb_server.h"
+#include "debug/debug_agent.h"
 
 static bool game_started;
 
@@ -52,6 +52,7 @@ extern u8 kb_key[MAPLE_PORTS][6];		// normal keys pressed
 
 int screen_dpi = 96;
 int insetLeft, insetRight, insetTop, insetBottom;
+DebugAgent agent;
 
 static bool inited = false;
 float scaling = 1;
@@ -548,7 +549,7 @@ static void gui_display_commands()
 			50 * scaling)))
 	{
 		gui_state = GuiState::Debugger;
-		debugger::insertMatchpoint(0, 0x8C010080, 2);
+		// debugger::insertMatchpoint(0, 0x8C010080, 2);
 	}
 
 	ImGui::End();
@@ -2152,9 +2153,11 @@ void do_emit_asm(char txt)
 
 void gui_debugger()
 {
+	u32 pc = *GetRegPtr(reg_nextpc);
+
 	ImGui::SetNextWindowSize(ImVec2(330 * scaling, 0));
 
-	ImGui::Begin("Debugger", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("Disassembly", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
 	if (ImGui::Button("Suspend"))
 	{
@@ -2165,20 +2168,26 @@ void gui_debugger()
 	ImGui::SameLine();
 	if (ImGui::Button("Step"))
 	{
-		dc_step();
+		agent.step();
 	}
 
 	ImGui::SameLine();
 	if (ImGui::Button("Resume"))
 	{
-		dc_resume();
+		agent.doContinue();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("BP"))
+	{
+		agent.insertMatchpoint(0, pc + 0x10, 2);
 	}
 
 	ImGui::SameLine();
 	if (ImGui::Button("Close"))
 	{
 		gui_state = GuiState::Closed;
-		dc_resume();
+		agent.doContinue();
 	}
 
 	// if (Sh4cntx.pc == 0x8C010000 || Sh4cntx.spc == 0x8C010000)
@@ -2189,28 +2198,57 @@ void gui_debugger()
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImFontAtlas* atlas = io.Fonts;
-	ImFont* font = atlas->Fonts[1];
-	ImGui::PushFont(font);
+	ImFont* defaultFont = atlas->Fonts[1];
+	ImGui::PushFont(defaultFont);
 
-	ImGui::Text("PC: %08X", Sh4cntx.pc);
-
+	
 	for (size_t i = 0; i < 20; i++)
 	{
-		u16 instr = ReadMem16_nommu(Sh4cntx.pc + i * 2);
+		u16 instr = ReadMem16_nommu(pc + i * 2);
 
 		char buf [11];
-		sprintf(buf, "%08X: ", Sh4cntx.pc + i * 2);
+		sprintf(buf, "%08X: ", pc + i * 2);
 		dasmline.append(buf);
 
-		sh4asm_disas_inst(instr, do_emit_asm, Sh4cntx.pc);
+		sh4asm_disas_inst(instr, do_emit_asm, pc);
 		dasmline.push_back('\n');
 	}
+
 
 	ImGui::Text(dasmline.c_str());
 	dasmline.clear();
 
 	ImGui::PopFont();
 
+	ImGui::End();
+
+
+	ImGui::SetNextWindowSize(ImVec2(150 * scaling, 0));
+	ImGui::Begin("SH4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::PushFont(defaultFont);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0));
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0,0));
+	ImGui::Text("PC: %08X", pc);
+	ImGui::Text("r0: %08X", *GetRegPtr(reg_r0));
+	ImGui::Text("r1: %08X", *GetRegPtr(reg_r1));
+	ImGui::Text("r2: %08X", *GetRegPtr(reg_r2));
+	ImGui::Text("r3: %08X", *GetRegPtr(reg_r3));
+	ImGui::Text("r4: %08X", *GetRegPtr(reg_r4));
+	ImGui::Text("r5: %08X", *GetRegPtr(reg_r5));
+	ImGui::Text("r6: %08X", *GetRegPtr(reg_r6));
+	ImGui::Text("r7: %08X", *GetRegPtr(reg_r7));
+	ImGui::Text("r8: %08X", *GetRegPtr(reg_r8));
+	ImGui::Text("r9: %08X", *GetRegPtr(reg_r9));
+	ImGui::Text("r10: %08X", *GetRegPtr(reg_r10));
+	ImGui::Text("r11: %08X", *GetRegPtr(reg_r11));
+	ImGui::Text("r12: %08X", *GetRegPtr(reg_r12));
+	ImGui::Text("r13: %08X", *GetRegPtr(reg_r13));
+	ImGui::Text("r14: %08X", *GetRegPtr(reg_r14));
+	ImGui::Text("r15: %08X", *GetRegPtr(reg_r15));
+	ImGui::PopStyleVar(2);
+	
+	ImGui::PopFont();
 	ImGui::End();
 }
 

@@ -31,6 +31,7 @@ struct Stop { };
 	void debugTrap(u32 event);
 	void subroutineCall();
 	void subroutineReturn();
+	void insertMatchpoint(char type, u32 addr, u32 len);
 
 #else
 	static inline void init() {}
@@ -39,5 +40,6 @@ struct Stop { };
 	static inline void debugTrap(u32 event) {}
 	static inline void subroutineCall() {}
 	static inline void subroutineReturn() {}
+	static inline void insertMatchpoint(char type, u32 addr, u32 len) {};
 #endif
 }
