@@ -48,6 +48,7 @@
 #include "hw/sh4/sh4_if.h"
 #include "hw/sh4/sh4_mem.h"
 #include "hw/sh4/disasm/disasm.h"
+#include "sh4asm/sh4asm_core/disas.h"
 
 static bool game_started;
 
@@ -2665,13 +2666,12 @@ void gui_display_osd()
 
 	if (gui_state == GuiState::Debugger)
 	{
-		ImGui_Impl_NewFrame();
+		gui_newFrame();
 		ImGui::NewFrame();
 
 		gui_debugger();
 
-		ImGui::Render();
-		ImGui_impl_RenderDrawData(ImGui::GetDrawData());
+		gui_endFrame();
 
 		return;
 	}	
@@ -2777,6 +2777,16 @@ bool __cdecl Concurrency::details::_Task_impl_base::_IsNonBlockingThread() {
 }
 #endif
 
+#define DISAS_LINE_LEN 128
+static char sh4_disas_line[DISAS_LINE_LEN];
+
+static void disas_emit(char ch) {
+	size_t len = strlen(sh4_disas_line);
+    if (len >= DISAS_LINE_LEN - 1)
+        return; // no more space
+    sh4_disas_line[len] = ch;
+}
+
 void gui_debugger()
 {
 	u32 pc = *GetRegPtr(reg_nextpc);
@@ -2805,17 +2815,25 @@ void gui_debugger()
 	}
 
 	ImGui::SameLine();
-	if (ImGui::Button("BP"))
-	{
-		debugAgent.insertMatchpoint(0, pc + 0x10, 2);
-	}
-
-	ImGui::SameLine();
 	if (ImGui::Button("Close"))
 	{
 		gui_state = GuiState::Closed;
 		GamepadDevice::load_system_mappings();
 		emu.start();
+	}
+
+
+	ImGui::PushItemWidth(80);
+	static char buf3[9] = "";
+	ImGui::InputText("", buf3, 9, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+	ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+	if (ImGui::Button("Add BP"))
+	{
+		char* tmp;
+		long bpaddr = strtoul(buf3, &tmp, 16);
+		debugAgent.insertMatchpoint(0, (u32) bpaddr, 2);
 	}
 
 	// if (Sh4cntx.pc == 0x8C010000 || Sh4cntx.spc == 0x8C010000)
@@ -2860,14 +2878,16 @@ void gui_debugger()
 		ImGui::PopStyleVar();
 
 		char buf [64];
-		char* dasmbuf;
-		dasmbuf = decode(instr, pc);
-		sprintf(buf, "%08lX:", (u32) addr);
+
+		memset(sh4_disas_line, 0, sizeof(sh4_disas_line));
+		sh4asm_disas_inst(instr, disas_emit, pc);
+		//dasmbuf = decode(instr, pc);
+		sprintf(buf, "%08X:", (u32) addr);
 		ImGui::Text(buf);
 		ImGui::SameLine();
 		ImGui::TextDisabled("%04X", instr);
 		ImGui::SameLine();
-		ImGui::Text(dasmbuf);
+		ImGui::Text(sh4_disas_line);
 	}
 
 	ImGui::PopFont();

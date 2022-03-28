@@ -47,7 +47,7 @@ static void Sh4_int_Run()
 			try {
 				do
 				{
-					if (next_pc == 0x8C0083ee) {
+					if (next_pc == 0xaC008300) {
 						NOTICE_LOG(COMMON, "HI, we are at IP.BIN entry 0x%08X", next_pc);
 						emu.stop();
 						throw debugger::Stop();

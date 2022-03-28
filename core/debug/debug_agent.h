@@ -202,6 +202,8 @@ public:
 		breakpoints[addr] = Breakpoint(type, addr);
 		breakpoints[addr].savedOp = ReadMem16_nommu(addr);
 		WriteMem16_nommu(addr, 0xC308);	// trapa #0x20
+
+		NOTICE_LOG(COMMON, "Adding breakpoint at 0x%08X", addr);
 		return true;
 	}
 	bool removeMatchpoint(char type, u32 addr, u32 len)
