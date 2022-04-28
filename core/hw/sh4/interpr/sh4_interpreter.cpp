@@ -47,10 +47,19 @@ static void Sh4_int_Run()
 			try {
 				do
 				{
-					if (next_pc == 0xaC008300) {
-						NOTICE_LOG(COMMON, "HI, we are at IP.BIN entry 0x%08X", next_pc);
-						emu.stop();
-						throw debugger::Stop();
+					if (emu.running()) {
+						if (next_pc == 0xaC010000) {
+							NOTICE_LOG(COMMON, "HI, we are at 1ST_READ.BIN entry 0x%08X", next_pc);
+							emu.stop();
+							throw debugger::Stop();
+						} else if (next_pc == 0x8c053ba6) {
+							NOTICE_LOG(COMMON, "gdFsOpen: %s", GetMemPtr(r[4], 0));
+						} else if (next_pc == 0x8c0532ac) {
+							NOTICE_LOG(COMMON, "gdFsChangeDir: %s", GetMemPtr(r[4], 0));
+						}
+						// else if (next_pc == 0x8c0533ee) {
+						// 	NOTICE_LOG(COMMON, "gdFsRead: dest = %08X", r[6]);
+						// }
 					}
 
 					u32 op = ReadNexOp();

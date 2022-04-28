@@ -1292,10 +1292,6 @@ if(NOT KNOWN_ARCHITECTURE_DETECTED)
     message(FATAL_ERROR "Unknown target processor: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-target_sources(${PROJECT_NAME} PRIVATE
-		core/deps/dcdis/src/decode.c
-		core/deps/dcdis/src/decode.h)
-
 if(NOT LIBRETRO)
 	target_include_directories(${PROJECT_NAME} PRIVATE core/deps/ggpo/include core/deps/ggpo/lib/ggpo)
 	target_sources(${PROJECT_NAME} PRIVATE

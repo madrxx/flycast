@@ -69,4 +69,4 @@ flycast_callbacks = {
 print("Callback set")
 f = 0
 
-flycast.emulator.startGame("pstone2.zip")
+-- flycast.emulator.startGame("pstone2.zip")
