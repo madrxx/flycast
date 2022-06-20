@@ -3233,5 +3233,46 @@ void gui_debugger()
 	ImGui::PopStyleVar();
 	ImGui::PopFont();
 	ImGui::End();
+
+	ImGui::SetNextWindowPos(ImVec2(1200, 16), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(260 * scaling, 0));
+
+	ImGui::Begin("TBG Tasks", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::PushFont(defaultFont);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
+
+	ImGui::Text("Array 1 / Array 2");
+
+	for (int i = 0; i < 17; i++) {
+
+		u32 action = *((u32 *) GetMemPtr(0x8c1ba3c8 + i * 32, 0));
+		auto it = knownTasks.find(action);
+		if (it != knownTasks.end()) {
+			ImGui::Text("%s", it->second.c_str());
+		} else {
+			ImGui::Text("0x%08x", action);
+		}
+
+		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+			WriteMem32_nommu(0x8c1ba3c8 + i * 32, 0xffffffff);
+		}
+
+		action = *((u32 *) GetMemPtr(0x8c1ba5e8 + i * 32, 0));
+		it = knownTasks.find(action);
+		ImGui::SameLine();
+		if (it != knownTasks.end()) {
+			ImGui::Text("%s", it->second.c_str());
+		} else {
+			ImGui::Text("0x%08x", action);
+		}
+
+		if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+			WriteMem32_nommu(0x8c1ba5e8 + i * 32, 0xffffffff);
+		}
+	}
+
+	ImGui::PopStyleVar();
+	ImGui::PopFont();
+	ImGui::End();
 }
 
