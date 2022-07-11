@@ -63,32 +63,38 @@ static void Sh4_int_Run()
 							// 	NOTICE_LOG(COMMON, "gdFsChangeDir: %s", GetMemPtr(r[4], 0));
 							// 	break;
 							
-							case 0x8c014b26:
-							{
-								u32 taskAddress = *((u32 *) GetMemPtr(r[15] + 8, 0));
-								auto it = knownTasks.find(taskAddress);
-								if (it != knownTasks.end()) {
-									NOTICE_LOG(COMMON, "pushTask() %s", it->second.c_str());
-								} else {
-									NOTICE_LOG(COMMON, "pushTask() task: 0x%08x", taskAddress);
-								}
+							// case 0x8c014b26:
+							// {
+							// 	u32 taskAddress = *((u32 *) GetMemPtr(r[15] + 8, 0));
+							// 	auto it = knownTasks.find(taskAddress);
+							// 	if (it != knownTasks.end()) {
+							// 		NOTICE_LOG(COMMON, "pushTask() %s", it->second.c_str());
+							// 	} else {
+							// 		NOTICE_LOG(COMMON, "pushTask() task: 0x%08x", taskAddress);
+							// 	}
 
-								break;
-							}
+							// 	break;
+							// }
 
-							case 0x8c014b66:
-							{
-								auto it = knownTasks.find(r[5]);
-								if (it != knownTasks.end()) {
-									NOTICE_LOG(COMMON, "freeTask() %s", it->second.c_str());
-								} else {
-									if (r[4] != 0x8c1ba428) {
-										NOTICE_LOG(COMMON, "freeTask() task: 0x%08x", r[4]);
-									}
-								}
+							// case 0x8c014b66:
+							// {
+							// 	auto it = knownTasks.find(r[5]);
+							// 	if (it != knownTasks.end()) {
+							// 		NOTICE_LOG(COMMON, "freeTask() %s", it->second.c_str());
+							// 	} else {
+							// 		if (r[4] != 0x8c1ba428) {
+							// 			NOTICE_LOG(COMMON, "freeTask() task: 0x%08x", r[4]);
+							// 		}
+							// 	}
 
-								break;
-							}
+							// 	break;
+							// }
+
+							// case 0x8c022ccc:
+							// {
+							// 	NOTICE_LOG(COMMON, "Bus r4 is 0x%08x\n", r[4]);
+							// 	break;
+							// }
 
 							default:
 								break;

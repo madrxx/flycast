@@ -596,8 +596,8 @@ static void gui_display_commands()
 		gui_stop_game();
 	}
 
-	if (ImGui::Button("Debugger", ImVec2(300 * scaling + ImGui::GetStyle().ColumnsMinSpacing + ImGui::GetStyle().FramePadding.x * 2 - 1,
-			50 * scaling)))
+	if (ImGui::Button("Debugger", ScaledVec2(300, 50)
+			+ ImVec2(ImGui::GetStyle().ColumnsMinSpacing + ImGui::GetStyle().FramePadding.x * 2 - 1, 0)))
 	{
 		gui_state = GuiState::Debugger;
 		// debugger::insertMatchpoint(0, 0x8C010080, 2);
@@ -2796,7 +2796,7 @@ void gui_debugger()
 	u32 pc = *GetRegPtr(reg_nextpc);
 
 	ImGui::SetNextWindowPos(ImVec2(16, 16), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(350 * scaling, 0), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ScaledVec2(350, 0), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Disassembly", NULL);
 
 	bool running = emu.running();
@@ -2942,7 +2942,7 @@ void gui_debugger()
 	ImGui::End();
 
 	ImGui::SetNextWindowPos(ImVec2(600, 450), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(540 * scaling, 0));
+	ImGui::SetNextWindowSize(ScaledVec2(540, 0));
 	ImGui::Begin("Memory Dump", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
 	ImGui::PushItemWidth(80);
@@ -3021,7 +3021,7 @@ void gui_debugger()
 			hexbuflen += sprintf(hexbuf + hexbuflen, "%c", (c >= 33 && c <= 126 ? c : '.'));
 		}
 
-		ImGui::Text(hexbuf);
+		ImGui::Text("%s", hexbuf);
 	}
 
 	ImGui::PopFont();
@@ -3029,7 +3029,7 @@ void gui_debugger()
 	ImGui::End();
 
 	ImGui::SetNextWindowPos(ImVec2(700, 16), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(150 * scaling, 0));
+	ImGui::SetNextWindowSize(ScaledVec2(150, 0));
 	ImGui::Begin("Breakpoints", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
@@ -3049,7 +3049,7 @@ void gui_debugger()
 
 
 	ImGui::SetNextWindowPos(ImVec2(900, 16), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(260 * scaling, 0));
+	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
 	ImGui::Begin("SH4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 
@@ -3235,7 +3235,7 @@ void gui_debugger()
 	ImGui::End();
 
 	ImGui::SetNextWindowPos(ImVec2(1200, 16), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(260 * scaling, 0));
+	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
 
 	ImGui::Begin("TBG Tasks", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
@@ -3270,6 +3270,61 @@ void gui_debugger()
 			WriteMem32_nommu(0x8c1ba5e8 + i * 32, 0xffffffff);
 		}
 	}
+
+	ImGui::SetNextWindowPos(ImVec2(700, 128), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
+
+	ImGui::PopStyleVar();
+	ImGui::PopFont();
+	ImGui::End();
+
+	ImGui::Begin("TBG Bus", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::PushFont(defaultFont);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
+
+	int busInt;
+	f32 busFloat;
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x070, 0));
+	ImGui::Text("0x070 dst: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x074, 0));
+	ImGui::Text("0x074 ang: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x078, 0));
+	ImGui::Text("0x078 acc: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x07c, 0));
+	ImGui::Text("0x07c ang: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x080, 0));
+	ImGui::Text("0x080 blk: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x250, 0));
+	ImGui::Text("0x250 ang: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x258, 0));
+	ImGui::Text("0x258 ang: %d", busInt);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x268, 0));
+	ImGui::Text("0x268 mirror: %d", busInt);
+
+	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x27c, 0));
+	ImGui::Text("0x27c spd: %11.5f", busFloat);
+
+	ImGui::Text("0x280[] acc hist: [", busFloat);
+	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x280, 0));
+	ImGui::Text("  0: %11.5f", busFloat);
+	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x284, 0));
+	ImGui::Text("  1: %11.5f", busFloat);
+	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x288, 0));
+	ImGui::Text("  2: %11.5f", busFloat);
+	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x28c, 0));
+	ImGui::Text("  3: %11.5f", busFloat);
+	ImGui::Text("]", busFloat);
+
+	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x2f4, 0));
+	ImGui::Text("0x2f4 gear: %d", busInt);
 
 	ImGui::PopStyleVar();
 	ImGui::PopFont();
