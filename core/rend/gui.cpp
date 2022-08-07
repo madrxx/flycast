@@ -2777,6 +2777,8 @@ bool __cdecl Concurrency::details::_Task_impl_base::_IsNonBlockingThread() {
 
 void gui_debugger()
 {
+	gui_debugger_control();
+
 	gui_debugger_disasm();
 
 	gui_debugger_memdump();

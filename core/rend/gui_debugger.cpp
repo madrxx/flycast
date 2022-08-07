@@ -10,6 +10,13 @@
 #include "input/gamepad_device.h"
 #include "sh4asm/sh4asm_core/disas.h"
 
+static bool disasm_window_open = false;
+static bool memdump_window_open = false;
+static bool breakpoints_window_open = false;
+static bool sh4_window_open = false;
+static bool tbg_window_open = false;
+
+
 #define DISAS_LINE_LEN 128
 static char sh4_disas_line[DISAS_LINE_LEN];
 
@@ -20,13 +27,11 @@ static void disas_emit(char ch) {
     sh4_disas_line[len] = ch;
 }
 
-void gui_debugger_disasm()
+void gui_debugger_control()
 {
-    u32 pc = *GetRegPtr(reg_nextpc);
-
 	ImGui::SetNextWindowPos(ImVec2(16, 16), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ScaledVec2(350, 0), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Disassembly", NULL);
+	ImGui::SetNextWindowSize(ScaledVec2(400, 0), ImGuiWindowFlags_NoResize | ImGuiCond_FirstUseEver);
+	ImGui::Begin("Control", NULL);
 
 	bool running = emu.running();
 
@@ -78,6 +83,41 @@ void gui_debugger_disasm()
 		emu.start();
 	}
 
+	if (ImGui::Button("Disassembly"))
+		disasm_window_open = !disasm_window_open;
+
+	ImGui::SameLine();
+	if (ImGui::Button("Memory Dump"))
+		memdump_window_open = !memdump_window_open;
+
+	ImGui::SameLine();
+	if (ImGui::Button("SH4"))
+		sh4_window_open = !sh4_window_open;
+
+	ImGui::SameLine();
+	if (ImGui::Button("Breakpoints"))
+		breakpoints_window_open = !breakpoints_window_open;
+
+	ImGui::SameLine();
+	if (ImGui::Button("TBG"))
+		tbg_window_open = !tbg_window_open;
+
+	ImGui::End();
+}
+
+void gui_debugger_disasm()
+{
+	if (!disasm_window_open) return;
+
+    u32 pc = *GetRegPtr(reg_nextpc);
+
+	ImGui::SetNextWindowPos(ImVec2(16, 64), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ScaledVec2(350, 0), ImGuiCond_FirstUseEver);
+	
+	if (!ImGui::Begin("Disassembly", &disasm_window_open)) {
+		ImGui::End();
+		return;
+	}
 
 	ImGui::PushItemWidth(80);
 	static char bpBuffer[9] = "";
@@ -171,14 +211,15 @@ void gui_debugger_disasm()
 	ImGui::End();
 }
 
-
 u32 memoryDumpAddr = 0x8c010000;
 
 void gui_debugger_memdump()
 {
+	if (!memdump_window_open) return;
+
     ImGui::SetNextWindowPos(ImVec2(600, 450), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(540, 0));
-	ImGui::Begin("Memory Dump", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("Memory Dump", &memdump_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
 	ImGui::PushItemWidth(80);
 	static char memDumpAddrBuf[8 + 1] = "";
@@ -269,13 +310,15 @@ void gui_debugger_memdump()
 
 void gui_debugger_breakpoints()
 {
+	if (!breakpoints_window_open) return;
+
     ImGuiIO& io = ImGui::GetIO();
 	ImFontAtlas* atlas = io.Fonts;
 	ImFont* defaultFont = atlas->Fonts[1];
 
     ImGui::SetNextWindowPos(ImVec2(700, 16), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(150, 0));
-	ImGui::Begin("Breakpoints", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("Breakpoints", &breakpoints_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 
@@ -295,13 +338,15 @@ void gui_debugger_breakpoints()
 
 void gui_debugger_sh4()
 {
+	if (!sh4_window_open) return;
+
     ImGuiIO& io = ImGui::GetIO();
 	ImFontAtlas* atlas = io.Fonts;
 	ImFont* defaultFont = atlas->Fonts[1];
 
     ImGui::SetNextWindowPos(ImVec2(900, 16), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
-	ImGui::Begin("SH4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("SH4", &sh4_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
@@ -490,6 +535,8 @@ void gui_debugger_sh4()
 
 void gui_debugger_tbg()
 {
+	if (!tbg_window_open) return;
+
     ImGuiIO& io = ImGui::GetIO();
 	ImFontAtlas* atlas = io.Fonts;
 	ImFont* defaultFont = atlas->Fonts[1];
@@ -497,7 +544,7 @@ void gui_debugger_tbg()
     ImGui::SetNextWindowPos(ImVec2(1200, 16), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
 
-	ImGui::Begin("TBG Tasks", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("TBG Tasks", &tbg_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 

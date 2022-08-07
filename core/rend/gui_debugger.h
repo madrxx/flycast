@@ -2,6 +2,8 @@
 
 #include "types.h"
 
+void gui_debugger_control();
+
 void gui_debugger_disasm();
 
 extern u32 memoryDumpAddr;
