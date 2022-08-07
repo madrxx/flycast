@@ -1052,6 +1052,8 @@ if(NOT LIBRETRO)
 	        core/rend/gui_cheats.cpp
 	        core/rend/gui_util.cpp
 	        core/rend/gui_util.h
+			core/rend/gui_debugger.cpp
+	        core/rend/gui_debugger.h
 	        core/rend/mainui.cpp
 	        core/rend/mainui.h)
 endif()
