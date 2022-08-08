@@ -14,7 +14,7 @@ static bool disasm_window_open = false;
 static bool memdump_window_open = false;
 static bool breakpoints_window_open = false;
 static bool sh4_window_open = false;
-static bool tbg_window_open = false;
+static bool tbg_window_open = true;
 
 
 #define DISAS_LINE_LEN 128
@@ -585,36 +585,38 @@ void gui_debugger_tbg()
 	ImGui::PopFont();
 	ImGui::End();
 
-	ImGui::Begin("TBG Bus", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("TBG", &tbg_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 
+	ImGui::Text("8c18ad20: %d", *((s32 *) GetMemPtr(0x8c18ad20, 0)));
+
+	ImGui::Text("8c1bb8c8: %d", *((s32 *) GetMemPtr(0x8c1bb8c8, 0)));
+
+	ImGui::Text("8c1bb8d0: %d", *((s32 *) GetMemPtr(0x8c1bb8d0, 0)));
+
+	ImGui::Text("0x2b4 state: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x2b4, 0)));
+	ImGui::Text("0x3c0 substate: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x3c0, 0)));
+
+	ImGui::Text("0x070 dst: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x070, 0)));
+	ImGui::Text("0x074 rot: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x074, 0)));
+	ImGui::Text("0x078 acc: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x078, 0)));
+	ImGui::Text("0x07c rot: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x07c, 0)));
+	ImGui::Text("0x080 blk: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x080, 0)));
+
+	ImGui::Text("0x2d0: 0x%08x", *((u32 *) GetMemPtr(0x8c1bb9d0 + 0x2d0, 0)));
+	ImGui::Text("0x118: %11.5f", *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x118, 0)));
+	ImGui::Text("0x11c: %11.5f", *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x11c, 0)));
+	ImGui::Text("0x120: %11.5f", *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x120, 0)));
+
+	ImGui::Text("0x250 ang: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x250, 0)));
+
+	ImGui::Text("0x258 rot: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x258, 0)));
+
+	ImGui::Text("0x268 mirror: %d", *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x268, 0)));
+
 	int busInt;
 	f32 busFloat;
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x070, 0));
-	ImGui::Text("0x070 dst: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x074, 0));
-	ImGui::Text("0x074 ang: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x078, 0));
-	ImGui::Text("0x078 acc: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x07c, 0));
-	ImGui::Text("0x07c ang: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x080, 0));
-	ImGui::Text("0x080 blk: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x250, 0));
-	ImGui::Text("0x250 ang: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x258, 0));
-	ImGui::Text("0x258 ang: %d", busInt);
-
-	busInt = *((s32 *) GetMemPtr(0x8c1bb9d0 + 0x268, 0));
-	ImGui::Text("0x268 mirror: %d", busInt);
 
 	busFloat = *((f32 *) GetMemPtr(0x8c1bb9d0 + 0x27c, 0));
 	ImGui::Text("0x27c spd: %11.5f", busFloat);
