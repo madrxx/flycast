@@ -3033,20 +3033,7 @@ void gui_display_osd()
 {
 	if (gui_state == GuiState::VJoyEdit)
 		return;
-	
-	if (gui_state == GuiState::Debugger)
-	{
-		gui_newFrame();
-		ImGui::NewFrame();
 
-		gui_debugger();
-
-		lua::overlay();
-
-		gui_endFrame(gui_is_open());
-
-		return;
-	}
 	std::string message = get_notification();
 	if (message.empty())
 		message = getFPSNotification();
@@ -3079,6 +3066,8 @@ void gui_display_osd()
 			chat.display();
 		}
 		lua::overlay();
+		if (gui_state == GuiState::Debugger)
+			gui_debugger();
 
 		gui_endFrame(gui_is_open());
 	}
@@ -3224,13 +3213,13 @@ bool __cdecl Concurrency::details::_Task_impl_base::_IsNonBlockingThread() {
 
 void gui_debugger()
 {
+	ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+
 	gui_debugger_control();
-
 	gui_debugger_disasm();
-
 	gui_debugger_memdump();
-
 	gui_debugger_breakpoints();
-
 	gui_debugger_sh4();
+
+	ImGui::PopFont();
 }

@@ -20,18 +20,18 @@
 
 #include "types.h"
 #include "debug/debug_agent.h"
-#include "emulator.h"
+// #include "emulator.h"
 #include "gui_util.h"
 #include "hw/sh4/sh4_if.h"
 #include "imgui/imgui.h"
 #include "input/gamepad_device.h"
 #include "sh4asm/sh4asm_core/disas.h"
+#include "imgui_memory_editor.h"
 
 static bool disasm_window_open = true;
-static bool memdump_window_open = false;
 static bool breakpoints_window_open = false;
 static bool sh4_window_open = true;
-
+MemoryEditor mem_edit;
 
 #define DISAS_LINE_LEN 128
 static char sh4_disas_line[DISAS_LINE_LEN];
@@ -104,7 +104,7 @@ void gui_debugger_control()
 	ImGui::Checkbox("Disassembly", &disasm_window_open);
 
 	ImGui::SameLine();
-	ImGui::Checkbox("Memory Dump", &memdump_window_open);
+	ImGui::Checkbox("Memory Dump", &mem_edit.Open);
 
 	ImGui::SameLine();
 	ImGui::Checkbox("SH4", &sh4_window_open);
@@ -135,11 +135,6 @@ void gui_debugger_disasm()
 	// 	dc_stop();
 	// }
 
-	ImGuiIO& io = ImGui::GetIO();
-	ImFontAtlas* atlas = io.Fonts;
-	ImFont* defaultFont = atlas->Fonts[1];
-
-	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 
 
@@ -185,7 +180,6 @@ void gui_debugger_disasm()
 		ImGui::Text("%s", sh4_disas_line);
 	}
 
-	ImGui::PopFont();
 	ImGui::PopStyleVar();
 	ImGui::End();
 }
@@ -195,132 +189,14 @@ ImU32 vslider_value = 0x10000 / 16;
 
 void gui_debugger_memdump()
 {
-	if (!memdump_window_open) return;
+	if (!mem_edit.Open) return;
 
-	ImGui::SetNextWindowPos(ImVec2(600, 450), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ScaledVec2(540, 0));
-	ImGui::Begin("Memory Dump", &memdump_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
-
-	ImGui::PushItemWidth(80 * settings.display.uiScale);
-	static char patchAddressBuffer[8 + 1] = "";
-	static char patchWordBuffer[4 + 1] = "";
-	ImGui::InputTextWithHint("##patchAddr", "Patch Addr", patchAddressBuffer, 8 + 1, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-	ImGui::SameLine();
-	ImGui::InputTextWithHint("##patchWord", "WORD", patchWordBuffer, 4 + 1, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-	ImGui::PopItemWidth();
-
-	ImGui::SameLine();
-	if (ImGui::Button("Write"))
-	{
-		char* tmp;
-		long patchAddress = strtoul(patchAddressBuffer, &tmp, 16);
-		long patchWord = strtoul(patchWordBuffer, &tmp, 16);
-		// debugAgent.insertMatchpoint(0, (u32) patchAddress, 2);
-		WriteMem16_nommu(patchAddress, patchWord);
-	}
-
-	ImGui::PushItemWidth(80);
-	static char memDumpAddrBuf[8 + 1] = "";
-	ImGui::InputText("##memDumpAddr", memDumpAddrBuf, 8 + 1, ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
-	ImGui::PopItemWidth();
-
-	ImGui::SameLine();
-	if (ImGui::Button("Go"))
-	{
-		// TODO: Validate input
-		char* tmp;
-		memoryDumpAddr = ((strtoul(memDumpAddrBuf, &tmp, 16) / 16) * 16) & 0x1fffffff;
-		vslider_value = (memoryDumpAddr - 0x0c000000) / 0x10;
-	}
-
-	ImGuiIO& io = ImGui::GetIO();
-	ImFontAtlas* atlas = io.Fonts;
-	ImFont* defaultFont = atlas->Fonts[1];
-
-	ImGui::PushFont(defaultFont);
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
-
-	char hexbuf[256];
-
-	float dumpTopPosY = ImGui::GetCursorPosY();
-
-	// TODO: Extract 24 constant (used to clamp memoryDumpAddr further below)
-	for (size_t i = 0; i < 24; i++) {
-		memset(hexbuf, 0, sizeof(hexbuf));
-		size_t hexbuflen = 0;
-
-		// hexbuflen += sprintf(hexbuf, "%08lX: ", memoryDumpAddr + i * 16);
-		ImGui::Text("%08lX: ", memoryDumpAddr + i * 16);
-		ImGui::SameLine();
-
-		for (size_t j = 0; j < 16; j++) {
-			int byte = ReadMem8_nommu(memoryDumpAddr + i * 16 + j);
-			// hexbuflen += sprintf(hexbuf + hexbuflen, "%02X", byte);
-			if (byte == 0) {
-				ImGui::TextDisabled("%02X", byte);
-			} else {
-				ImGui::Text("%02X", byte);
-			}
-
-			if ((j + 1) % 4 == 0) {
-				// hexbuflen += sprintf(hexbuf + hexbuflen, "|");
-				ImGui::SameLine(0, 8);
-			} else {
-				// hexbuflen += sprintf(hexbuf + hexbuflen, " ");
-				ImGui::SameLine(0, 4);
-			}
-		}
-		// hexbuflen += sprintf(hexbuf + hexbuflen, " ");
-		for (size_t j = 0; j < 16; j++) {
-			int c = ReadMem8_nommu(memoryDumpAddr + i * 16 + j);
-			hexbuflen += sprintf(hexbuf + hexbuflen, "%c", (c >= 33 && c <= 126 ? c : '.'));
-		}
-
-		ImGui::Text("%s", hexbuf);
-	}
-
-	/* ImGui::SetNextItemWidth(-FLT_MIN); */
-	
-	const ImU64 min = 0x0;
-	const ImU64 max = (RAM_SIZE / 0x10);
-
-	float sliderHeight = ImGui::GetCursorPosY() - dumpTopPosY;
-	ImGui::SetCursorPos(ImVec2(ImGui::GetWindowWidth()-20, dumpTopPosY));
-	if (ImGui::VSliderScalar("##scroll", ImVec2(20, sliderHeight), ImGuiDataType_U32, &vslider_value, &max, &min, "", ImGuiSliderFlags_NoInput))
-	{
-		memoryDumpAddr = 0x0c000000 + vslider_value * 0x10;
-	}
-	else if (ImGui::IsWindowHovered())
-	{
-		if (io.MouseWheel > 0 && memoryDumpAddr >= 0x0c000000 + 0x10) {
-			memoryDumpAddr -= 0x10;
-			vslider_value = (memoryDumpAddr - 0x0c000000) / 0x10;
-		} else if (io.MouseWheel < 0 && memoryDumpAddr <= 0x0c000000 + RAM_SIZE - 0x10) {
-			memoryDumpAddr += 0x10;
-			vslider_value = (memoryDumpAddr - 0x0c000000) / 0x10;
-		}
-	}
-
-	// TODO: Remove modifier bits from address;
-
-	if (memoryDumpAddr > 0x0c000000 + RAM_SIZE - 24 * 16)
-	{
-		memoryDumpAddr = 0x0c000000 + RAM_SIZE - 24 * 16;
-		vslider_value = (memoryDumpAddr - 0x0c000000) / 0x10;
-	}
-
-	ImGui::PopFont();
-	ImGui::PopStyleVar();
-	ImGui::End();
+	mem_edit.DrawWindow("Memory Editor", GetMemPtr(0x0c000000, 1), RAM_SIZE, 0x0c000000);
 }
 
 void gui_debugger_breakpoints()
 {
 	if (!breakpoints_window_open) return;
-
-	ImGuiIO& io = ImGui::GetIO();
-	ImFontAtlas* atlas = io.Fonts;
-	ImFont* defaultFont = atlas->Fonts[1];
 
 	ImGui::SetNextWindowPos(ImVec2(700, 16), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(150, 0));
@@ -340,7 +216,6 @@ void gui_debugger_breakpoints()
 	}
 
 
-	ImGui::PushFont(defaultFont);
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 
 	auto it = debugAgent.breakpoints[DebugAgent::Breakpoint::Type::BP_TYPE_SOFTWARE_BREAK].begin();
@@ -353,7 +228,6 @@ void gui_debugger_breakpoints()
 	}
 
 	ImGui::PopStyleVar();
-	ImGui::PopFont();
 	ImGui::End();
 }
 
@@ -361,14 +235,9 @@ void gui_debugger_sh4()
 {
 	if (!sh4_window_open) return;
 
-	ImGuiIO& io = ImGui::GetIO();
-	ImFontAtlas* atlas = io.Fonts;
-	ImFont* defaultFont = atlas->Fonts[1];
-
 	ImGui::SetNextWindowPos(ImVec2(900, 16), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ScaledVec2(260, 0));
 	ImGui::Begin("SH4", &sh4_window_open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
-	ImGui::PushFont(defaultFont);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8,2));
 
@@ -550,6 +419,5 @@ void gui_debugger_sh4()
 	ImGui::Text(" fr15: %11.5f", floatRegValue);
 
 	ImGui::PopStyleVar();
-	ImGui::PopFont();
 	ImGui::End();
 }
