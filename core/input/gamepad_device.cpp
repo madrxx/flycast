@@ -88,7 +88,7 @@ bool GamepadDevice::handleButtonInput(int port, DreamcastKey key, bool pressed)
 				gui_open_settings();
 			break;
 		case EMU_BTN_FFORWARD:
-			if (pressed && !gui_is_open())
+			if (pressed && (!gui_is_open() || gui_state == GuiState::Debugger))
 				settings.input.fastForwardMode = !settings.input.fastForwardMode && !settings.network.online && !settings.naomi.multiboard;
 			break;
 		case EMU_BTN_LOADSTATE:
