@@ -195,8 +195,8 @@ struct MemoryEditor
         Open = true;
         if (ImGui::Begin(title, &Open, ImGuiWindowFlags_NoScrollbar))
         {
-            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
-                ImGui::OpenPopup("context");
+            // if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+            //     ImGui::OpenPopup("context");
             DrawContents(mem_data, mem_size, base_display_addr);
             if (ContentsWidthChanged)
             {
@@ -387,10 +387,26 @@ struct MemoryEditor
                             else
                                 ImGui::Text(format_byte_space, b);
                         }
-                        if (!ReadOnly && ImGui::IsItemHovered() && ImGui::IsMouseClicked(0))
+
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup))
                         {
-                            DataEditingTakeFocus = true;
-                            data_editing_addr_next = addr;
+                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                            {
+                                if (ImGui::IsKeyDown(ImGuiKey_ModShift))
+                                {
+                                    HighlightMin = ImMin(DataPreviewAddr, addr);
+                                    HighlightMax = ImMax(DataPreviewAddr, addr) + 1;
+                                }
+                                else if (!ReadOnly)
+                                {
+                                    DataEditingTakeFocus = true;
+                                    data_editing_addr_next = addr;
+                                }
+                            }
+                            else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                            {
+                                ImGui::OpenPopup("##context2");
+                            }
                         }
                     }
                 }
@@ -422,7 +438,15 @@ struct MemoryEditor
                     }
                 }
             }
+
         ImGui::PopStyleVar(2);
+
+        if (ImGui::BeginPopup("##context2")) {
+            ImGui::MenuItem("Copy");
+            ImGui::MenuItem("Fill with zeros");
+            ImGui::EndPopup();
+        }
+
         ImGui::EndChild();
 
         // Notify the main window of our ideal child content size (FIXME: we are missing an API to get the contents size from the child)

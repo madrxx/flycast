@@ -222,6 +222,7 @@ public:
 	}
 	bool insertMatchpoint(Breakpoint::Type type, u32 addr, u32 len)
 	{
+		addr &= 0x1fffffff;
 		if (type == Breakpoint::BP_TYPE_SOFTWARE_BREAK && len != 2) {
 			WARN_LOG(COMMON, "insertMatchpoint: length != 2: %d", len);
 			return false;
@@ -236,6 +237,7 @@ public:
 	}
 	bool removeMatchpoint(Breakpoint::Type type, u32 addr, u32 len)
 	{
+		addr &= 0x1fffffff;
 		if (type == Breakpoint::BP_TYPE_SOFTWARE_BREAK && len != 2) {
 			WARN_LOG(COMMON, "removeMatchpoint: length != 2: %d", len);
 			return false;
